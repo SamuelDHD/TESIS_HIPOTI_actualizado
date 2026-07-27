@@ -1,0 +1,763 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Sistema Web – Riesgo Cardiovascular & Hipotiroidismo</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<!-- Chart.js -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<!-- SheetJS para exportar Excel -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+<style>
+/* ══════════════════════════════════════
+   VARIABLES Y RESET
+══════════════════════════════════════ */
+:root {
+  --navy:    #0d1b2a;
+  --teal:    #1a6b6b;
+  --teal2:   #22a39f;
+  --gold:    #e8b84b;
+  --cream:   #f5f0e8;
+  --white:   #ffffff;
+  --light:   #eef4f4;
+  --gray:    #6b7a8d;
+  --red:     #c0392b;
+  --orange:  #e67e22;
+  --green:   #27ae60;
+  --sidebar: 260px;
+}
+*{ margin:0; padding:0; box-sizing:border-box; }
+body{ font-family:'DM Sans',sans-serif; background:var(--cream); color:var(--navy); display:flex; min-height:100vh; }
+
+/* ══════════════════════════════════════
+   SIDEBAR
+══════════════════════════════════════ */
+#sidebar{
+  width:var(--sidebar); min-width:var(--sidebar); background:var(--navy);
+  display:flex; flex-direction:column; position:fixed; top:0; left:0; height:100vh;
+  z-index:100; transition:transform .3s ease;
+}
+.sidebar-brand{ padding:28px 20px 20px; border-bottom:1px solid rgba(255,255,255,.08); }
+.sidebar-brand h2{ font-family:'Playfair Display',serif; color:var(--gold); font-size:14px; line-height:1.4; }
+.sidebar-brand p{ color:rgba(255,255,255,.45); font-size:11px; margin-top:4px; }
+nav{ flex:1; padding:16px 0; }
+.nav-item{
+  display:flex; align-items:center; gap:12px; padding:14px 24px; cursor:pointer;
+  color:rgba(255,255,255,.6); font-size:13px; font-weight:500; letter-spacing:.3px;
+  transition:all .2s; border-left:3px solid transparent;
+}
+.nav-item:hover{ color:var(--white); background:rgba(255,255,255,.06); }
+.nav-item.active{ color:var(--gold); border-left-color:var(--gold); background:rgba(232,184,75,.08); }
+.nav-item .icon{ font-size:18px; width:22px; text-align:center; }
+.sidebar-footer{ padding:16px 20px; border-top:1px solid rgba(255,255,255,.08); color:rgba(255,255,255,.3); font-size:11px; line-height:1.6; }
+.sidebar-clock{ padding:16px 20px; border-top:1px solid rgba(255,255,255,.08); }
+.sidebar-clock .sc-time{ font-family:'Playfair Display',serif; font-size:22px; font-weight:700; color:var(--gold); letter-spacing:.5px; }
+.sidebar-clock .sc-date{ font-size:11px; color:rgba(255,255,255,.5); margin-top:3px; text-transform:capitalize; line-height:1.4; }
+
+/* ══════════════════════════════════════
+   MAIN & PAGES
+══════════════════════════════════════ */
+#main{ margin-left:var(--sidebar); flex:1; min-height:100vh; }
+.page{ display:none; animation:fadeIn .4s ease; }
+.page.active{ display:block; }
+@keyframes fadeIn{ from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+
+/* ══════════════════════════════════════
+   PAGE HEADER
+══════════════════════════════════════ */
+.page-header{
+  background:var(--navy); padding:32px 40px; color:var(--white);
+  border-bottom:3px solid var(--gold);
+  display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px;
+}
+.page-header h1{ font-family:'Playfair Display',serif; font-size:24px; }
+.page-header p{ color:rgba(255,255,255,.6); font-size:13px; margin-top:4px; }
+.header-actions{ display:flex; gap:10px; flex-wrap:wrap; }
+
+/* ══════════════════════════════════════
+   HERO / CAROUSEL (Página 1)
+══════════════════════════════════════ */
+.carousel{ position:relative; overflow:hidden; height:340px; }
+.carousel-track{ display:flex; transition:transform .6s cubic-bezier(.4,0,.2,1); height:100%; }
+.carousel-slide{ min-width:100%; height:100%; display:flex; align-items:center; justify-content:center; position:relative; overflow:hidden; }
+.carousel-slide:nth-child(1){ background:linear-gradient(135deg,#0d1b2a 0%,#1a6b6b 100%); }
+.carousel-slide:nth-child(2){ background:linear-gradient(135deg,#1a2a4a 0%,#22a39f 100%); }
+.carousel-slide:nth-child(3){ background:linear-gradient(135deg,#0d2a1a 0%,#1a6b3a 100%); }
+.slide-content{ text-align:center; padding:40px; position:relative; z-index:1; }
+.slide-content .slide-icon{ font-size:52px; margin-bottom:16px; display:block; }
+.slide-content h1{ font-family:'Playfair Display',serif; font-size:clamp(18px,2.5vw,26px); color:#fff; font-weight:700; line-height:1.3; margin-bottom:12px; }
+.slide-content p{ font-size:14px; color:rgba(255,255,255,.75); max-width:520px; margin:0 auto; line-height:1.7; }
+.carousel-btn{
+  position:absolute; top:50%; transform:translateY(-50%); z-index:10;
+  background:rgba(255,255,255,.15); border:none; color:white; width:40px; height:40px;
+  border-radius:50%; font-size:18px; cursor:pointer; backdrop-filter:blur(4px); transition:background .2s;
+}
+.carousel-btn:hover{ background:rgba(255,255,255,.3); }
+.carousel-btn.prev{ left:16px; }
+.carousel-btn.next{ right:16px; }
+.carousel-dots{ position:absolute; bottom:14px; left:50%; transform:translateX(-50%); display:flex; gap:8px; z-index:10; }
+.dot{ width:8px; height:8px; border-radius:50%; background:rgba(255,255,255,.35); cursor:pointer; transition:all .2s; }
+.dot.active{ background:var(--gold); transform:scale(1.3); }
+.title-band{ background:var(--teal); padding:16px 40px; text-align:center; }
+.title-band h2{ font-family:'Playfair Display',serif; color:var(--white); font-size:clamp(13px,1.8vw,17px); letter-spacing:.5px; }
+.title-band p{ color:rgba(255,255,255,.7); font-size:12px; margin-top:4px; }
+.stat-row{ display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:16px; padding:32px 40px; }
+.stat-box{ background:var(--navy); border-radius:12px; padding:24px; text-align:center; }
+.stat-box .num{ font-family:'Playfair Display',serif; font-size:30px; color:var(--gold); font-weight:700; }
+.stat-box .lbl{ color:rgba(255,255,255,.6); font-size:12px; margin-top:4px; }
+.info-grid{ display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:24px; padding:0 40px 40px; }
+.info-card{ background:var(--white); border-radius:14px; padding:28px; box-shadow:0 4px 20px rgba(13,27,42,.07); border-top:4px solid var(--teal2); transition:transform .2s,box-shadow .2s; }
+.info-card:hover{ transform:translateY(-4px); box-shadow:0 8px 32px rgba(13,27,42,.12); }
+.info-card .card-icon{ font-size:32px; margin-bottom:14px; }
+.info-card h3{ font-family:'Playfair Display',serif; font-size:16px; color:var(--navy); margin-bottom:10px; }
+.info-card p{ font-size:13px; color:var(--gray); line-height:1.7; }
+
+/* ══════════════════════════════════════
+   TABLA CRUD (Página 2)
+══════════════════════════════════════ */
+.db-section{ padding:28px 40px; }
+.db-toolbar{ display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; flex-wrap:wrap; gap:12px; }
+.db-toolbar h3{ font-family:'Playfair Display',serif; font-size:18px; }
+.search-box{ display:flex; align-items:center; gap:8px; background:var(--white); border:1px solid #d0dae6; border-radius:8px; padding:8px 14px; }
+.search-box input{ border:none; outline:none; font-family:'DM Sans',sans-serif; font-size:13px; width:200px; }
+.counters-row{ display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:12px; margin-bottom:20px; }
+.counter-box{ background:var(--white); border-radius:10px; padding:16px; text-align:center; box-shadow:0 2px 8px rgba(0,0,0,.05); }
+.counter-box .c-num{ font-family:'Playfair Display',serif; font-size:26px; font-weight:700; }
+.counter-box .c-lbl{ font-size:11px; color:var(--gray); margin-top:2px; }
+.c-total{ color:var(--navy); }
+.c-alto{ color:var(--red); }
+.c-mod{ color:var(--orange); }
+.c-bajo{ color:var(--green); }
+table{ width:100%; border-collapse:collapse; background:var(--white); border-radius:12px; overflow:hidden; box-shadow:0 2px 12px rgba(0,0,0,.06); }
+thead{ background:var(--navy); color:var(--white); }
+thead th{ padding:12px 14px; font-size:11px; font-weight:600; letter-spacing:.5px; text-align:left; }
+tbody tr{ border-bottom:1px solid #eef2f6; transition:background .15s; }
+tbody tr:hover{ background:#f5f8fb; }
+tbody td{ padding:11px 14px; font-size:13px; color:var(--navy); }
+.badge{ display:inline-block; padding:3px 10px; border-radius:20px; font-size:11px; font-weight:600; }
+.badge.bajo{ background:#d4f4e2; color:#1a7a40; }
+.badge.moderado{ background:#fef3cd; color:#9a6a00; }
+.badge.alto{ background:#fde8e8; color:#c0392b; }
+.action-btns{ display:flex; gap:6px; }
+.act-btn{ background:none; border:1px solid #e0e8f0; border-radius:6px; padding:5px 8px; cursor:pointer; font-size:13px; transition:all .15s; }
+.act-btn:hover{ background:var(--light); border-color:var(--teal2); }
+.act-btn.delete:hover{ background:#fde8e8; border-color:var(--red); }
+.pagination{ display:flex; align-items:center; justify-content:flex-end; gap:6px; margin-top:16px; flex-wrap:wrap; }
+.pg-btn{ padding:6px 12px; border:1px solid #d0dae6; background:var(--white); border-radius:6px; font-size:12px; cursor:pointer; transition:all .15s; }
+.pg-btn:hover,.pg-btn.active{ background:var(--teal); color:var(--white); border-color:var(--teal); }
+
+/* ══════════════════════════════════════
+   ENCUESTA (Página 3)
+══════════════════════════════════════ */
+.survey-wrap{ padding:32px 40px; }
+.survey-intro{ background:var(--white); border-radius:14px; padding:26px 30px; margin-bottom:24px; border-left:5px solid var(--gold); box-shadow:0 2px 12px rgba(0,0,0,.06); }
+.survey-intro h2{ font-family:'Playfair Display',serif; font-size:19px; margin-bottom:8px; }
+.survey-intro p{ font-size:13px; color:var(--gray); line-height:1.7; }
+.progress-bar-wrap{ margin-bottom:24px; }
+.progress-label{ display:flex; justify-content:space-between; font-size:12px; color:var(--gray); margin-bottom:6px; }
+.progress-bar{ height:6px; background:#dde5ed; border-radius:3px; }
+.progress-fill{ height:100%; background:linear-gradient(90deg,var(--teal),var(--teal2)); border-radius:3px; transition:width .4s ease; }
+.question-card{ background:var(--white); border-radius:14px; padding:26px 30px; margin-bottom:16px; box-shadow:0 2px 12px rgba(0,0,0,.06); display:none; }
+.question-card.active{ display:block; animation:fadeIn .3s ease; }
+.q-number{ font-size:11px; font-weight:600; color:var(--teal2); letter-spacing:1px; text-transform:uppercase; margin-bottom:8px; }
+.q-text{ font-size:15px; font-weight:500; color:var(--navy); margin-bottom:18px; line-height:1.5; }
+.options-grid{ display:flex; flex-direction:column; gap:10px; }
+.option-btn{ display:flex; align-items:center; gap:12px; padding:13px 18px; border:2px solid #dde5ed; border-radius:10px; cursor:pointer; font-family:'DM Sans',sans-serif; font-size:13px; color:var(--navy); background:var(--white); text-align:left; transition:all .2s; }
+.option-btn:hover{ border-color:var(--teal2); background:#f0fafa; }
+.option-btn.selected{ border-color:var(--teal); background:#e8f5f5; color:var(--teal); }
+.opt-letter{ width:28px; height:28px; border-radius:50%; background:var(--light); display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; color:var(--teal); flex-shrink:0; }
+.survey-nav{ display:flex; justify-content:space-between; align-items:center; margin-top:20px; }
+#result-screen{ display:none; background:var(--white); border-radius:14px; padding:36px; text-align:center; box-shadow:0 2px 12px rgba(0,0,0,.06); }
+#result-screen h2{ font-family:'Playfair Display',serif; font-size:21px; margin-bottom:12px; }
+.risk-badge{ display:inline-block; padding:10px 28px; border-radius:30px; font-size:17px; font-weight:700; margin:12px 0; }
+.risk-bajo{ background:#d4f4e2; color:#1a7a40; }
+.risk-moderado{ background:#fef3cd; color:#9a6a00; }
+.risk-alto{ background:#fde8e8; color:#c0392b; }
+.factores-list{ list-style:none; text-align:left; font-size:13px; color:var(--gray); line-height:1.8; margin-top:8px; }
+
+/* ══════════════════════════════════════
+   GRÁFICAS (Página 4)
+══════════════════════════════════════ */
+.charts-wrap{ padding:28px 40px; }
+.charts-grid{ display:grid; grid-template-columns:repeat(auto-fit,minmax(340px,1fr)); gap:24px; }
+.chart-card{ background:var(--white); border-radius:14px; padding:22px; box-shadow:0 2px 12px rgba(0,0,0,.06); }
+.chart-card h3{ font-family:'Playfair Display',serif; font-size:15px; margin-bottom:4px; }
+.chart-card .chart-sub{ font-size:12px; color:var(--gray); margin-bottom:16px; }
+canvas{ width:100%!important; }
+.results-summary{ background:var(--navy); border-radius:14px; padding:24px 30px; margin-bottom:24px; color:var(--white); display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:20px; }
+.rs-item{ text-align:center; }
+.rs-item .rs-num{ font-family:'Playfair Display',serif; font-size:28px; font-weight:700; }
+.rs-item .rs-num.green{ color:#4ade80; }
+.rs-item .rs-num.yellow{ color:var(--gold); }
+.rs-item .rs-num.red{ color:#f87171; }
+.rs-item .rs-num.teal{ color:#5eead4; }
+.rs-item .rs-lbl{ font-size:11px; opacity:.6; margin-top:4px; }
+
+/* ══════════════════════════════════════
+   GLOSARIO (Página 5)
+══════════════════════════════════════ */
+.glosario-wrap{ padding:28px 40px; }
+.glosario-intro{ background:var(--white); border-radius:14px; padding:22px 28px; margin-bottom:22px; border-left:5px solid var(--gold); box-shadow:0 2px 12px rgba(0,0,0,.06); }
+.glosario-intro h2{ font-family:'Playfair Display',serif; font-size:18px; margin-bottom:6px; }
+.glosario-intro p{ font-size:13px; color:var(--gray); line-height:1.7; }
+.glosario-toolbar{ display:flex; flex-direction:column; gap:14px; margin-bottom:22px; }
+.chip-row{ display:flex; gap:8px; flex-wrap:wrap; }
+.chip{ padding:8px 16px; border-radius:20px; border:1.5px solid #dde5ed; background:var(--white); font-size:12px; font-weight:600; color:var(--gray); cursor:pointer; transition:all .2s; white-space:nowrap; }
+.chip:hover{ border-color:var(--teal2); color:var(--teal2); }
+.chip.active{ background:var(--teal); border-color:var(--teal); color:var(--white); }
+.glosario-count{ font-size:12px; color:var(--gray); }
+.glosario-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(270px,1fr)); gap:20px; }
+.glosario-card{ background:var(--white); border-radius:14px; padding:0; box-shadow:0 4px 20px rgba(13,27,42,.07); border-top:4px solid var(--teal2); cursor:pointer; transition:transform .2s,box-shadow .2s; display:flex; flex-direction:column; overflow:hidden; }
+.glosario-card:hover{ transform:translateY(-4px); box-shadow:0 8px 32px rgba(13,27,42,.12); }
+.g-card-img{ width:100%; height:130px; object-fit:cover; background:var(--light); }
+.g-card-body{ padding:20px 22px; display:flex; flex-direction:column; gap:10px; flex:1; }
+.glosario-card .g-icon{ font-size:26px; }
+.glosario-card h4{ font-family:'Playfair Display',serif; font-size:15px; color:var(--navy); line-height:1.3; }
+.glosario-card p{ font-size:12.5px; color:var(--gray); line-height:1.6; flex:1; }
+.g-cat-badge{ align-self:flex-start; font-size:10px; padding:3px 10px; border-radius:20px; font-weight:700; text-transform:uppercase; letter-spacing:.4px; }
+.g-cat-definiciones{ background:#e8f4fd; color:#1a5a8a; }
+.g-cat-tipos{ background:#f3e8fd; color:#7a2ab0; }
+.g-cat-caracteristicas{ background:#fef3cd; color:#9a6a00; }
+.g-cat-cuidados{ background:#d4f4e2; color:#1a7a40; }
+.g-cat-advertencias{ background:#fde8e8; color:#c0392b; }
+.g-cat-dietas{ background:#e8fdf3; color:#1a8a6a; }
+.glosario-empty{ text-align:center; padding:60px 20px; color:var(--gray); }
+.glosario-empty .ge-icon{ font-size:36px; margin-bottom:10px; display:block; }
+.modal-glosario{ max-width:640px; }
+.modal-glosario-img{ width:100%; max-height:230px; object-fit:cover; border-radius:12px; margin-bottom:18px; background:var(--light); }
+.modal-glosario-body p{ font-size:13.5px; color:var(--gray); line-height:1.85; margin-bottom:14px; }
+.modal-glosario-body p:last-child{ margin-bottom:0; }
+.g-modal-cat{ margin-bottom:10px; }
+
+/* ══════════════════════════════════════
+   MODALES
+══════════════════════════════════════ */
+.modal-overlay{
+  display:none; position:fixed; inset:0; background:rgba(0,0,0,.5);
+  z-index:200; align-items:center; justify-content:center; padding:20px;
+}
+.modal-overlay.active{ display:flex; }
+.modal-box{
+  background:var(--white); border-radius:16px; width:100%; max-width:560px;
+  max-height:90vh; overflow-y:auto; box-shadow:0 24px 80px rgba(0,0,0,.25);
+}
+.modal-header{
+  padding:24px 28px 18px; border-bottom:1px solid #eef2f6;
+  display:flex; align-items:center; justify-content:space-between;
+}
+.modal-header h3{ font-family:'Playfair Display',serif; font-size:18px; }
+.modal-close{ background:none; border:none; font-size:22px; cursor:pointer; color:var(--gray); line-height:1; }
+.modal-body{ padding:24px 28px; }
+.modal-footer{ padding:16px 28px 24px; display:flex; justify-content:flex-end; gap:10px; }
+.modal-detalle{ max-width:760px; }
+.form-grid{ display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+.form-group{ display:flex; flex-direction:column; gap:6px; }
+.form-group.full{ grid-column:1/-1; }
+.form-group label{ font-size:12px; font-weight:600; color:var(--gray); text-transform:uppercase; letter-spacing:.5px; }
+.form-group input, .form-group select{
+  padding:10px 14px; border:1.5px solid #d0dae6; border-radius:8px;
+  font-family:'DM Sans',sans-serif; font-size:13px; color:var(--navy);
+  transition:border-color .2s; outline:none;
+}
+.form-group input:focus, .form-group select:focus{ border-color:var(--teal2); }
+.form-hint{ font-size:11px; color:var(--gray); margin-top:2px; }
+.detalle-grid{ display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+.detalle-section h4{ font-family:'Playfair Display',serif; font-size:15px; margin-bottom:12px; color:var(--navy); }
+.detalle-section h5{ font-size:13px; font-weight:600; color:var(--gray); margin-bottom:8px; }
+.detalle-table{ width:100%; font-size:13px; }
+.detalle-table tr{ border-bottom:1px solid #eef2f6; }
+.detalle-table td{ padding:7px 4px; color:var(--gray); }
+.detalle-table td:last-child{ color:var(--navy); text-align:right; }
+.ml-resultado{
+  padding:14px 18px; border-radius:10px; font-size:15px; font-weight:600;
+  display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;
+}
+.badge-bajo{ background:#d4f4e2; color:#1a7a40; }
+.badge-moderado{ background:#fef3cd; color:#9a6a00; }
+.badge-alto{ background:#fde8e8; color:#c0392b; }
+.conf-badge{ font-size:11px; opacity:.75; font-weight:400; }
+.neutro-box{ background:#f8fafc; border-radius:10px; padding:14px 16px; }
+.neutro-box h5{ font-size:13px; font-weight:600; color:var(--navy); margin-bottom:10px; }
+.neutro-bars{ display:flex; flex-direction:column; gap:8px; }
+.neutro-row{ display:flex; align-items:center; gap:8px; font-size:12px; color:var(--gray); }
+.neutro-row span:first-child{ width:130px; flex-shrink:0; }
+.nbar{ height:8px; border-radius:4px; min-width:4px; transition:width .5s ease; }
+.neutro-row span:last-child{ width:36px; text-align:right; }
+
+/* ══════════════════════════════════════
+   BOTONES
+══════════════════════════════════════ */
+.btn{ padding:10px 22px; border-radius:8px; font-family:'DM Sans',sans-serif; font-size:13px; font-weight:600; cursor:pointer; border:none; transition:all .2s; display:inline-flex; align-items:center; gap:6px; }
+.btn:disabled{ opacity:.5; cursor:not-allowed; }
+.btn-primary{ background:var(--teal); color:var(--white); }
+.btn-primary:hover:not(:disabled){ background:var(--teal2); }
+.btn-secondary{ background:var(--white); color:var(--navy); border:2px solid #dde5ed; }
+.btn-secondary:hover{ border-color:var(--teal); color:var(--teal); }
+.btn-gold{ background:var(--gold); color:var(--navy); }
+.btn-gold:hover{ background:#d4a43a; }
+.btn-red{ background:var(--red); color:var(--white); }
+.btn-green{ background:var(--green); color:var(--white); }
+.btn-green:hover{ background:#219a52; }
+
+/* ══════════════════════════════════════
+   TOAST
+══════════════════════════════════════ */
+.toast{
+  position:fixed; bottom:28px; right:28px; z-index:999;
+  padding:13px 22px; border-radius:10px; font-size:13px; font-weight:500;
+  box-shadow:0 8px 28px rgba(0,0,0,.18); transform:translateY(80px); opacity:0;
+  transition:all .35s cubic-bezier(.4,0,.2,1);
+}
+.toast.show{ transform:translateY(0); opacity:1; }
+.toast-success{ background:#d4f4e2; color:#1a7a40; border:1px solid #a8dbb9; }
+.toast-error{   background:#fde8e8; color:#c0392b; border:1px solid #f0b4b4; }
+.toast-info{    background:#e8f4fd; color:#1a5a8a; border:1px solid #b0d4f0; }
+
+@media(max-width:768px){
+  #sidebar{ transform:translateX(-100%); }
+  #main{ margin-left:0; }
+  .form-grid{ grid-template-columns:1fr; }
+  .detalle-grid{ grid-template-columns:1fr; }
+  .db-section, .survey-wrap, .charts-wrap{ padding:20px; }
+  .page-header{ padding:20px; }
+}
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════
+     SIDEBAR
+══════════════════════════════════════ -->
+<aside id="sidebar">
+  <div class="sidebar-brand">
+    <h2>Sistema Web Inteligente<br>Riesgo Cardiovascular</h2>
+    <p>Hipotiroidismo No Controlado</p>
+  </div>
+  <nav>
+    <div class="nav-item active" onclick="mostrarPagina('p1',this)">
+      <span class="icon">🏠</span> Información
+    </div>
+    <div class="nav-item" onclick="mostrarPagina('p2',this)">
+      <span class="icon">🗄️</span> Recopilación de Datos
+    </div>
+    <div class="nav-item" onclick="mostrarPagina('p3',this)">
+      <span class="icon">📋</span> Encuesta
+    </div>
+    <div class="nav-item" onclick="mostrarPagina('p4',this)">
+      <span class="icon">📊</span> Gráficas
+    </div>
+    <div class="nav-item" onclick="mostrarPagina('p5',this)">
+      <span class="icon">📖</span> Glosario
+    </div>
+  </nav>
+  <div class="sidebar-clock" id="sidebarClock">
+    <div class="sc-time" id="scTime">--:--:--</div>
+    <div class="sc-date" id="scDate">Cargando fecha…</div>
+  </div>
+  <div class="sidebar-footer">
+    Est. Samuel Infante Arévalo<br>
+    Est. Samuel Hungría Domínguez<br>
+    Ing. Lorenzo Cevallos Torres<br>
+    Universidad de Guayaquil<br>
+    Ing. de Software · 2025<br>
+  </div>
+</aside>
+
+<!-- ══════════════════════════════════════
+     MAIN
+══════════════════════════════════════ -->
+<main id="main">
+
+  <!-- ─────── PÁGINA 1: INFORMACIÓN ─────── -->
+  <div class="page active" id="p1">
+    <div class="carousel">
+      <div class="carousel-track" id="carouselTrack">
+        <div class="carousel-slide">
+          <div class="slide-content">
+            <span class="slide-icon">❤️‍🔥</span>
+            <h1>Evaluación del Riesgo Cardiovascular en Pacientes con Hipotiroidismo</h1>
+            <p>Sistema inteligente que integra Machine Learning y Neutrosofía para predecir y clasificar el riesgo cardiovascular en pacientes con hipotiroidismo no controlado.</p>
+          </div>
+        </div>
+        <div class="carousel-slide">
+          <div class="slide-content">
+            <span class="slide-icon">🤖</span>
+            <h1>Machine Learning y Neutrosofía al Servicio de la Salud</h1>
+            <p>Árbol de Decisión (Random Forest) entrenado con variables clínicas reales, potenciado con lógica neutrosófica para gestionar la incertidumbre diagnóstica.</p>
+          </div>
+        </div>
+        <div class="carousel-slide">
+          <div class="slide-content">
+            <span class="slide-icon">🔥</span>
+            <h1>Base de Datos en Tiempo Real con Firebase</h1>
+            <p>Todos los registros de pacientes y encuestas se sincronizan automáticamente en Firebase Firestore, permitiendo consultas y análisis en tiempo real.</p>
+          </div>
+        </div>
+      </div>
+      <button class="carousel-btn prev" onclick="moverCarousel(-1)">‹</button>
+      <button class="carousel-btn next" onclick="moverCarousel(1)">›</button>
+      <div class="carousel-dots">
+        <div class="dot active" onclick="irSlide(0)"></div>
+        <div class="dot" onclick="irSlide(1)"></div>
+        <div class="dot" onclick="irSlide(2)"></div>
+      </div>
+    </div>
+
+    <div class="title-band">
+      <h2>Sistema Web Inteligente para la Evaluación del Riesgo Cardiovascular y el Fortalecimiento de la Alfabetización Sanitaria</h2>
+      <p>en Pacientes con Hipotiroidismo No Controlado · Machine Learning + Neutrosofía + Firebase Realtime</p>
+    </div>
+
+    <div class="stat-row">
+      <div class="stat-box"><div class="num">5–15%</div><div class="lbl">Prevalencia hipotiroidismo en Latinoamérica</div></div>
+      <div class="stat-box"><div class="num">2.5x</div><div class="lbl">Mayor riesgo cardiovascular en no controlados</div></div>
+      <div class="stat-box"><div class="num">3</div><div class="lbl">Niveles de clasificación de riesgo</div></div>
+      <div class="stat-box"><div class="num">ML+N</div><div class="lbl">Machine Learning + Neutrosofía integrados</div></div>
+    </div>
+
+    <div class="info-grid">
+      <div class="info-card"><div class="card-icon"><p style="text-align: justify;">🦋</div><h3>¿Qué es el Hipotiroidismo?</h3><p>El hipotiroidismo es una condición en la que la glándula tiroides no produce suficiente hormona tiroidea. Sin control, genera alteraciones metabólicas que elevan el riesgo de enfermedades cardiovasculares.</p></div>
+      <div class="info-card"><div class="card-icon">❤️</div><h3>Riesgo Cardiovascular Asociado</h3><p>Las alteraciones como dislipidemia, hipertensión arterial y disfunción endotelial causadas por el hipotiroidismo no controlado incrementan significativamente el riesgo de infarto, arritmias e insuficiencia cardíaca.</p></div>
+      <div class="info-card"><div class="card-icon">🎯🧠</div><h3>Objetivos</h3><p>El manejo del hipotiroidismo no controlado tiene como objetivo principal restablecer el equilibrio hormonal mediante la normalización de los niveles de hormonas tiroideas y de la hormona estimulante de la tiroides (TSH), permitiendo así la recuperación progresiva de las funciones metabólicas del organismo.</p></div>
+      <div class="info-card"><div class="card-icon">🥗🍽️</div><h3>Dieta</h3><p>La alimentación en pacientes con hipotiroidismo no controlado debe estar orientada a favorecer un adecuado funcionamiento metabólico y a prevenir complicaciones asociadas al exceso de peso, la dislipidemia y el estreñimiento.</p></div>
+      <div class="info-card"><div class="card-icon">🚨</div><h3>Prevención</h3><p>La prevención del hipotiroidismo no controlado se basa principalmente en el diagnóstico oportuno, la adherencia estricta al tratamiento farmacológico y el monitoreo periódico de los parámetros hormonales. La realización de controles médicos regulares permite detectar tempranamente alteraciones en los niveles de TSH y hormonas tiroideas, facilitando los ajustes terapéuticos necesarios antes de que aparezcan complicaciones significativas.</p></div>
+      <div class="info-card"><div class="card-icon">📌</div><h3>Recomendaciones</h3><p>Los pacientes con hipotiroidismo no controlado deben mantener un seguimiento médico continuo con evaluaciones clínicas y de laboratorio periódicas para garantizar una respuesta terapéutica adecuada. Se recomienda cumplir rigurosamente con la medicación prescrita, respetando horarios y condiciones de administración para optimizar su absorción y eficacia.</p></div>
+      <div class="info-card"><div class="card-icon">📖</div><h3>Misión</h3><p>Brindar una atención integral y continua a los pacientes con hipotiroidismo no controlado mediante la detección temprana, el seguimiento clínico oportuno, la educación en salud y el cumplimiento adecuado del tratamiento, con el propósito de restablecer el equilibrio hormonal, prevenir complicaciones asociadas a la enfermedad y mejorar la calidad de vida, el bienestar físico y emocional de los pacientes.</p></div>
+      <div class="info-card"><div class="card-icon">📖</div><h3>Visión</h3><p>Ser un referente en la prevención, control y manejo del hipotiroidismo, promoviendo una atención centrada en el paciente, basada en evidencia científica y apoyada en estrategias de monitoreo, educación y acompañamiento permanente, logrando que las personas afectadas mantengan un adecuado control de su condición, reduzcan los riesgos de complicaciones y alcancen una vida saludable y funcional a largo plazo.</p></div>
+    </div>
+  </div>
+
+  <!-- ─────── PÁGINA 2: RECOPILACIÓN DE DATOS ─────── -->
+  <div class="page" id="p2">
+    <div class="page-header">
+      <div>
+        <h1>🗄️ Recopilación de Datos</h1>
+        <p>Registro de datos clínicos.</p>
+      </div>
+      <div class="header-actions">
+        <button class="btn btn-gold" onclick="abrirModalPaciente()">➕ Nuevo Paciente</button>
+        <button class="btn btn-green" id="btnExportar" onclick="exportarExcel()">📥 Exportar Excel</button>
+      </div>
+    </div>
+
+    <div class="db-section">
+      <!-- Contadores -->
+      <div class="counters-row">
+        <div class="counter-box"><div class="c-num c-total" id="cntTotal">0</div><div class="c-lbl">Total Pacientes</div></div>
+        <div class="counter-box"><div class="c-num c-alto"  id="cntAlto">0</div><div class="c-lbl">Riesgo Alto</div></div>
+        <div class="counter-box"><div class="c-num c-mod"   id="cntModerado">0</div><div class="c-lbl">Riesgo Moderado</div></div>
+        <div class="counter-box"><div class="c-num c-bajo"  id="cntBajo">0</div><div class="c-lbl">Riesgo Bajo</div></div>
+      </div>
+
+      <div class="db-toolbar">
+        <h3>Registros de Pacientes</h3>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+          <div class="search-box">
+            <span>🔍</span>
+            <input type="text" placeholder="Buscar por edad, sexo, riesgo…" oninput="filtrarTabla(this.value)"/>
+          </div>
+          <span style="font-size:12px;color:var(--gray);" id="rowCount">Cargando…</span>
+        </div>
+      </div>
+
+      <div style="overflow-x:auto;">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th><th>Edad</th><th>Sexo</th><th>TSH (μU/mL)</th>
+              <th>T4 Libre</th><th>Colesterol</th><th>TAS mmHg</th>
+              <th>TAD mmHg</th><th>IMC</th><th>Años diag.</th>
+              <th>Riesgo CV (ML)</th><th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody">
+            <tr><td colspan="12" style="text-align:center;padding:32px;color:#6b7a8d;">Conectando con Firebase…</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="pagination" id="pagination"></div>
+    </div>
+  </div>
+
+  <!-- ─────── PÁGINA 3: ENCUESTA ─────── -->
+  <div class="page" id="p3">
+    <div class="page-header">
+      <div>
+        <h1>📋 Encuesta de Alfabetización Sanitaria</h1>
+        <p>Calculo de riesgo cardiovascular.</p>
+      </div>
+      <div class="header-actions">
+        <button class="btn btn-secondary" onclick="exportarEncuestasExcel()">📥 Exportar Encuestas</button>
+      </div>
+    </div>
+    <div class="survey-wrap">
+      <div class="survey-intro">
+        <h2>Instrucciones</h2>
+        <p>Esta encuesta evalúa su nivel de conocimiento y percepción sobre el hipotiroidismo y su relación con el riesgo cardiovascular. Al finalizar, el sistema calculará automáticamente su nivel de riesgo utilizando el modelo de Machine Learning e integrará los datos a la base de datos.</p>
+      </div>
+      <div class="progress-bar-wrap" id="progressWrap">
+        <div class="progress-label">
+          <span id="progressText">Pregunta 1 de 12</span>
+          <span id="progressPct">8%</span>
+        </div>
+        <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:8%"></div></div>
+      </div>
+      <div id="questionsContainer"></div>
+      <div id="result-screen"></div>
+      <div class="survey-nav" id="surveyNav">
+        <button class="btn btn-secondary" id="btnPrev" onclick="preguntaAnterior()" style="display:none;">← Anterior</button>
+        <button class="btn btn-primary"   id="btnNext" onclick="siguientePregunta()">Siguiente →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─────── PÁGINA 4: GRÁFICAS ─────── -->
+  <div class="page" id="p4">
+    <div class="page-header">
+      <div>
+        <h1>📊 Gráficas y Estadísticas</h1>
+        <p>Visualización de resultados.</p>
+      </div>
+      <div class="header-actions">
+        <button class="btn btn-secondary" onclick="refrescarGraficas()">🔄 Actualizar</button>
+      </div>
+    </div>
+    <div class="charts-wrap">
+      <div class="results-summary">
+        <div class="rs-item"><div class="rs-num green"  id="sTotal">0</div><div class="rs-lbl">Total encuestados</div></div>
+        <div class="rs-item"><div class="rs-num teal"   id="sBajo">0</div><div class="rs-lbl">Riesgo Bajo</div></div>
+        <div class="rs-item"><div class="rs-num yellow" id="sMod">0</div><div class="rs-lbl">Riesgo Moderado</div></div>
+        <div class="rs-item"><div class="rs-num red"    id="sAlto">0</div><div class="rs-lbl">Riesgo Alto</div></div>
+      </div>
+      <div class="charts-grid">
+        <div class="chart-card">
+          <h3>Riesgo CV por Modelo ML</h3>
+          <div class="chart-sub">Distribución calculada por el algoritmo</div>
+          <canvas id="chartRiesgoML" height="260"></canvas>
+        </div>
+        <div class="chart-card">
+          <h3>Diagnóstico Confirmado</h3>
+          <div class="chart-sub">P1 · Proporción de pacientes diagnosticados</div>
+          <canvas id="chartDonut" height="260"></canvas>
+        </div>
+        <div class="chart-card">
+          <h3>Frecuencia de Síntomas</h3>
+          <div class="chart-sub">P2 · Distribución de respuestas</div>
+          <canvas id="chartBar" height="260"></canvas>
+        </div>
+        <div class="chart-card">
+          <h3>Tiempo desde Diagnóstico</h3>
+          <div class="chart-sub">P3 · Distribución por años</div>
+          <canvas id="chartAge" height="260"></canvas>
+        </div>
+        <div class="chart-card">
+          <h3>Adherencia a Medicación</h3>
+          <div class="chart-sub">P4 · Toma de Levotiroxina</div>
+          <canvas id="chartAdherencia" height="260"></canvas>
+        </div>
+        <div class="chart-card">
+          <h3>Factores que Dificultan Control</h3>
+          <div class="chart-sub">P10 · Barreras al tratamiento</div>
+          <canvas id="chartLine" height="260"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─────── PÁGINA 5: GLOSARIO ─────── -->
+  <div class="page" id="p5">
+    <div class="page-header">
+      <div>
+        <h1>📖 Glosario de Alfabetización Sanitaria</h1>
+        <p>Aprende sobre el hipotiroidismo y su relación con el riesgo cardiovascular.</p>
+      </div>
+    </div>
+    <div class="glosario-wrap">
+      <div class="glosario-intro">
+        <h2>¿Para qué sirve este glosario?</h2>
+        <p>Este espacio educativo explica en lenguaje sencillo los conceptos clave sobre el hipotiroidismo, los tipos de trastornos relacionados, sus características, los cuidados diarios, las señales de advertencia y las recomendaciones dietéticas. Toca cualquier tarjeta para ver la explicación completa.</p>
+      </div>
+
+      <div class="glosario-toolbar">
+        <div class="search-box" style="max-width:340px;">
+          <span>🔍</span>
+          <input type="text" id="glosarioBuscar" placeholder="Buscar un término…" oninput="filtrarGlosario()" style="width:100%;"/>
+        </div>
+        <div class="chip-row" id="glosarioChips"></div>
+        <div class="glosario-count" id="glosarioCount"></div>
+      </div>
+
+      <div class="glosario-grid" id="glosarioGrid"></div>
+    </div>
+  </div>
+
+</main>
+
+<!-- ══════════════════════════════════════
+     MODAL — TÉRMINO DEL GLOSARIO
+══════════════════════════════════════ -->
+<div class="modal-overlay" id="modalGlosario">
+  <div class="modal-box modal-glosario">
+    <div class="modal-header">
+      <h3 id="glosarioModalTitulo">📖 Término</h3>
+      <button class="modal-close" onclick="cerrarGlosarioModal()">×</button>
+    </div>
+    <div class="modal-body modal-glosario-body" id="glosarioModalContenido"></div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="cerrarGlosarioModal()">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     MODAL — CREAR / EDITAR PACIENTE
+══════════════════════════════════════ -->
+<div class="modal-overlay" id="modalPaciente">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h3 id="modalTitulo">➕ Nuevo Paciente</h3>
+      <button class="modal-close" onclick="cerrarModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:12px;color:var(--gray);margin-bottom:18px;">
+        El riesgo cardiovascular será calculado automáticamente por el modelo ML al guardar.
+      </p>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Edad (años)</label>
+          <input type="number" id="f_edad" min="18" max="99" placeholder="Ej: 45"/>
+        </div>
+        <div class="form-group">
+          <label>Sexo</label>
+          <select id="f_sexo">
+            <option value="F">Femenino</option>
+            <option value="M">Masculino</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>TSH (μU/mL)</label>
+          <input type="number" id="f_tsh" step="0.01" min="0" placeholder="Ej: 5.2"/>
+          <span class="form-hint">Normal: 0.4 – 4.0</span>
+        </div>
+        <div class="form-group">
+          <label>T4 Libre (ng/dL)</label>
+          <input type="number" id="f_t4" step="0.01" min="0" placeholder="Ej: 0.9"/>
+          <span class="form-hint">Normal: 0.8 – 1.8</span>
+        </div>
+        <div class="form-group">
+          <label>Colesterol (mg/dL)</label>
+          <input type="number" id="f_col" min="0" placeholder="Ej: 210"/>
+          <span class="form-hint">Óptimo: &lt; 200</span>
+        </div>
+        <div class="form-group">
+          <label>IMC</label>
+          <input type="number" id="f_imc" step="0.1" min="0" placeholder="Ej: 27.3"/>
+          <span class="form-hint">Normal: 18.5 – 24.9</span>
+        </div>
+        <div class="form-group">
+          <label>TAS — Sistólica (mmHg)</label>
+          <input type="number" id="f_tas" min="0" placeholder="Ej: 130"/>
+        </div>
+        <div class="form-group">
+          <label>TAD — Diastólica (mmHg)</label>
+          <input type="number" id="f_tad" min="0" placeholder="Ej: 85"/>
+        </div>
+        <div class="form-group full">
+          <label>Años con diagnóstico</label>
+          <input type="number" id="f_anos" min="0" max="60" placeholder="Ej: 5"/>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="cerrarModal()">Cancelar</button>
+      <button class="btn btn-primary"   id="btnGuardarPaciente" onclick="guardarPaciente()">Guardar paciente</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     MODAL — DETALLE ML
+══════════════════════════════════════ -->
+<div class="modal-overlay" id="modalDetalle">
+  <div class="modal-box modal-detalle">
+    <div class="modal-header">
+      <h3>🤖 Detalle del Modelo ML</h3>
+      <button class="modal-close" onclick="cerrarDetalle()">×</button>
+    </div>
+    <div class="modal-body" id="detalleContenido"></div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="cerrarDetalle()">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast de notificaciones -->
+<div class="toast" id="toast"></div>
+
+<!-- ══════════════════════════════════════
+     SCRIPTS (orden importa)
+══════════════════════════════════════ -->
+<script src="firebase-config.js"></script>
+<script src="ml-engine.js"></script>
+<script src="crud.js"></script>
+<script src="survey.js"></script>
+<script src="charts.js"></script>
+<script src="export.js"></script>
+<script src="glossary.js"></script>
+
+<script>
+/* ─── NAVEGACIÓN ─── */
+function mostrarPagina(id, el) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  el.classList.add('active');
+  if (id === 'p4') refrescarGraficas();
+}
+
+/* ─── CAROUSEL ─── */
+let curSlide = 0;
+function moverCarousel(dir) {
+  curSlide = (curSlide + dir + 3) % 3;
+  actualizarCarousel();
+}
+function irSlide(i) { curSlide = i; actualizarCarousel(); }
+function actualizarCarousel() {
+  document.getElementById('carouselTrack').style.transform = `translateX(-${curSlide * 100}%)`;
+  document.querySelectorAll('.dot').forEach((d, i) => d.classList.toggle('active', i === curSlide));
+}
+setInterval(() => moverCarousel(1), 4500);
+
+/* ─── RELOJ / FECHA EN TIEMPO REAL ─── */
+function actualizarReloj() {
+  const ahora = new Date();
+  const hora = ahora.toLocaleTimeString('es-EC', { hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false });
+  const fecha = ahora.toLocaleDateString('es-EC', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+  const elTime = document.getElementById('scTime');
+  const elDate = document.getElementById('scDate');
+  if (elTime) elTime.textContent = hora;
+  if (elDate) elDate.textContent = fecha;
+}
+
+/* ─── INICIALIZACIÓN ─── */
+document.addEventListener('DOMContentLoaded', () => {
+  // Encuesta
+  renderizarPreguntas();
+  actualizarProgreso();
+  // Tabla de pacientes (tiempo real)
+  escucharPacientes();
+  // Glosario
+  renderizarGlosario();
+  // Reloj: se actualiza cada segundo y se recalcula la fecha automáticamente al cambiar el día
+  actualizarReloj();
+  setInterval(actualizarReloj, 1000);
+});
+</script>
+</body>
+</html>
