@@ -260,6 +260,7 @@ canvas{ width:100%!important; }
 .form-group{ display:flex; flex-direction:column; gap:6px; }
 .form-group.full{ grid-column:1/-1; }
 .form-group label{ font-size:12px; font-weight:600; color:var(--gray); text-transform:uppercase; letter-spacing:.5px; }
+.form-instruction{ font-size:11.5px; color:var(--teal2); background:#eef8f7; border-left:3px solid var(--teal2); padding:5px 9px; border-radius:5px; line-height:1.5; }
 .form-group input, .form-group select{
   padding:10px 14px; border:1.5px solid #d0dae6; border-radius:8px;
   font-family:'DM Sans',sans-serif; font-size:13px; color:var(--navy);
@@ -267,6 +268,14 @@ canvas{ width:100%!important; }
 }
 .form-group input:focus, .form-group select:focus{ border-color:var(--teal2); }
 .form-hint{ font-size:11px; color:var(--gray); margin-top:2px; }
+.form-group input.field-error, .form-group select.field-error{ border-color:#c0392b !important; background:#fef5f5; }
+.field-error-msg{ font-size:11px; color:#c0392b; font-weight:600; display:none; }
+.form-group.has-error .field-error-msg{ display:block; }
+.form-group.has-error .form-hint{ display:none; }
+.form-group.has-error .form-instruction{ display:none; }
+.coherencia-error{ display:none; background:#fef5f5; border:1px solid #f1b6b6; border-left:4px solid #c0392b; color:#a8322a; padding:12px 16px; border-radius:8px; font-size:12px; line-height:1.7; margin-top:16px; }
+.coherencia-error.show{ display:block; }
+.coherencia-error ul{ margin:4px 0 0 18px; }
 .detalle-grid{ display:grid; grid-template-columns:1fr 1fr; gap:20px; }
 .detalle-section h4{ font-family:'Playfair Display',serif; font-size:15px; margin-bottom:12px; color:var(--navy); }
 .detalle-section h5{ font-size:13px; font-weight:600; color:var(--gray); margin-bottom:8px; }
@@ -631,50 +640,72 @@ canvas{ width:100%!important; }
         El riesgo cardiovascular será calculado automáticamente por el modelo ML al guardar.
       </p>
       <div class="form-grid">
-        <div class="form-group">
+        <div class="form-group" id="grp_edad">
           <label>Edad (años)</label>
-          <input type="number" id="f_edad" min="18" max="99" placeholder="Ej: 45"/>
+          <span class="form-instruction">💡 Ingrese la edad del paciente en años.</span>
+          <input type="number" id="f_edad" min="1" max="120" placeholder="Ej: 45"/>
+          <span class="form-hint">Rango válido: 1 – 120 años</span>
+          <span class="field-error-msg" id="err_edad">Ingrese una edad válida (1–120).</span>
         </div>
-        <div class="form-group">
+        <div class="form-group" id="grp_sexo">
           <label>Sexo</label>
+          <span class="form-instruction">💡 Seleccione el sexo del paciente.</span>
           <select id="f_sexo">
             <option value="F">Femenino</option>
             <option value="M">Masculino</option>
           </select>
         </div>
-        <div class="form-group">
+        <div class="form-group" id="grp_tsh">
           <label>TSH (μU/mL)</label>
-          <input type="number" id="f_tsh" step="0.01" min="0" placeholder="Ej: 5.2"/>
-          <span class="form-hint">Normal: 0.4 – 4.0</span>
+          <span class="form-instruction">💡 Ingrese el nivel de TSH obtenido en su examen de laboratorio.</span>
+          <input type="number" id="f_tsh" step="0.01" min="0" max="100" placeholder="Ej: 5.2"/>
+          <span class="form-hint">Normal: 0.4 – 4.0 · válido: 0 – 100</span>
+          <span class="field-error-msg" id="err_tsh">Ingrese un valor de TSH válido (0–100).</span>
         </div>
-        <div class="form-group">
+        <div class="form-group" id="grp_t4">
           <label>T4 Libre (ng/dL)</label>
-          <input type="number" id="f_t4" step="0.01" min="0" placeholder="Ej: 0.9"/>
-          <span class="form-hint">Normal: 0.8 – 1.8</span>
+          <span class="form-instruction">💡 Ingrese el nivel de T4 libre de su examen de laboratorio.</span>
+          <input type="number" id="f_t4" step="0.01" min="0" max="10" placeholder="Ej: 0.9"/>
+          <span class="form-hint">Normal: 0.8 – 1.8 · válido: 0 – 10</span>
+          <span class="field-error-msg" id="err_t4">Ingrese un valor de T4 libre válido (0–10).</span>
         </div>
-        <div class="form-group">
+        <div class="form-group" id="grp_col">
           <label>Colesterol (mg/dL)</label>
-          <input type="number" id="f_col" min="0" placeholder="Ej: 210"/>
-          <span class="form-hint">Óptimo: &lt; 200</span>
+          <span class="form-instruction">💡 Ingrese su nivel de colesterol total.</span>
+          <input type="number" id="f_col" min="50" max="500" placeholder="Ej: 210"/>
+          <span class="form-hint">Óptimo: &lt; 200 · válido: 50 – 500</span>
+          <span class="field-error-msg" id="err_col">Ingrese un colesterol válido (50–500).</span>
         </div>
-        <div class="form-group">
+        <div class="form-group" id="grp_imc">
           <label>IMC</label>
-          <input type="number" id="f_imc" step="0.1" min="0" placeholder="Ej: 27.3"/>
-          <span class="form-hint">Normal: 18.5 – 24.9</span>
+          <span class="form-instruction">💡 Ingrese el índice de masa corporal del paciente.</span>
+          <input type="number" id="f_imc" step="0.1" min="10" max="70" placeholder="Ej: 27.3"/>
+          <span class="form-hint">Normal: 18.5 – 24.9 · válido: 10 – 70</span>
+          <span class="field-error-msg" id="err_imc">Ingrese un IMC válido (10–70).</span>
         </div>
-        <div class="form-group">
+        <div class="form-group" id="grp_tas">
           <label>TAS — Sistólica (mmHg)</label>
-          <input type="number" id="f_tas" min="0" placeholder="Ej: 130"/>
+          <span class="form-instruction">💡 Ingrese su presión arterial sistólica.</span>
+          <input type="number" id="f_tas" min="60" max="260" placeholder="Ej: 130"/>
+          <span class="form-hint">Rango válido: 60 – 260 mmHg</span>
+          <span class="field-error-msg" id="err_tas">Ingrese una presión sistólica válida (60–260).</span>
         </div>
-        <div class="form-group">
+        <div class="form-group" id="grp_tad">
           <label>TAD — Diastólica (mmHg)</label>
-          <input type="number" id="f_tad" min="0" placeholder="Ej: 85"/>
+          <span class="form-instruction">💡 Ingrese su presión arterial diastólica.</span>
+          <input type="number" id="f_tad" min="30" max="160" placeholder="Ej: 85"/>
+          <span class="form-hint">Rango válido: 30 – 160 mmHg</span>
+          <span class="field-error-msg" id="err_tad">Ingrese una presión diastólica válida (30–160).</span>
         </div>
-        <div class="form-group full">
+        <div class="form-group full" id="grp_anos">
           <label>Años con diagnóstico</label>
-          <input type="number" id="f_anos" min="0" max="60" placeholder="Ej: 5"/>
+          <span class="form-instruction">💡 Ingrese cuántos años lleva el paciente con el diagnóstico de hipotiroidismo.</span>
+          <input type="number" id="f_anos" min="0" max="70" placeholder="Ej: 5"/>
+          <span class="form-hint">Rango válido: 0 – 70 años</span>
+          <span class="field-error-msg" id="err_anos">Ingrese un número de años válido (0–70).</span>
         </div>
       </div>
+      <div class="coherencia-error" id="coherenciaError"></div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="cerrarModal()">Cancelar</button>
@@ -709,6 +740,7 @@ canvas{ width:100%!important; }
 <script src="ml-engine.js"></script>
 <script src="crud.js"></script>
 <script src="survey.js"></script>
+<script src="validation.js"></script>
 <script src="charts.js"></script>
 <script src="export.js"></script>
 <script src="glossary.js"></script>
