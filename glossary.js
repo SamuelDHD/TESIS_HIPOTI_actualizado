@@ -283,7 +283,7 @@ const GLOSARIO_DATOS = [
     detalle: 'Debido al metabolismo más lento, es común que el control de peso requiera más esfuerzo. Una alimentación equilibrada, porciones adecuadas y actividad física regular ayudan a prevenir el sobrepeso, factor que se suma al riesgo cardiovascular ya elevado.',
     caracteristicas: ['El IMC es el indicador más usado para monitorear el peso.', 'Los cambios deben ser graduales, no dietas extremas.', 'Se recomienda acompañamiento nutricional si hay sobrepeso marcado.'],
     ejemplos: ['Un paciente que, junto con su tratamiento hormonal, baja su IMC de 29 a 25 en 6 meses con dieta y ejercicio.'],
-    imagen: ''
+    imagen: 'https://as01.epimg.net/deporteyvida/imagenes/2019/01/07/portada/1546884654_231090_1546884807_noticia_normal.jpg'
   },
   {
     id: 'g29', categoria: 'dietas', icono: '',
